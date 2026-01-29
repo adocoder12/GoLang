@@ -1,4 +1,4 @@
-package strManipulation
+package helpers
 
 import "fmt"
 
@@ -19,11 +19,12 @@ func GetLastRune(s string) rune {
 }
 
 func NRune(s string, i int) rune {
+	runes := []rune(s)
+	
 	if s == "" {
 		return 0
 	}
 	
-	runes := []rune(s)
 
 	fmt.Println("rune:", string(runes[i]))
 
