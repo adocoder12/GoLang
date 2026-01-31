@@ -1,0 +1,148 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+)
+
+func main() {
+	// Program must have exactly ONE argument (collection name)
+	if len(os.Args) != 2 || os.Args[1] == "help" {
+		printHelp()
+		return
+	}
+
+	tag := os.Args[1]
+	filename := tag + ".txt" // each collection is stored in its own file
+
+	// Open file. If it doesn't exist, create it.
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		fmt.Println("Error opening file:", err)
+		return
+	}
+	file.Close() // close immediately, we just wanted to ensure it exists
+
+	fmt.Println("Welcome to the notes tool!")
+
+	reader := bufio.NewReader(os.Stdin) // used for reading user input
+
+	for {
+		// Show menu
+		fmt.Println("\nSelect operation:")
+		fmt.Println("1. Show notes.")
+		fmt.Println("2. Add a note.")
+		fmt.Println("3. Delete a note.")
+		fmt.Println("4. Exit.")
+
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+
+		switch input {
+		case "1":
+			showNotes(filename)
+		case "2":
+			addNote(filename, reader)
+		case "3":
+			deleteNote(filename, reader)
+		case "4":
+			return
+		default:
+			fmt.Println("Invalid option.")
+		}
+	}
+}
+
+func printHelp() {
+	fmt.Println("Usage: ./notestool [TAG]")
+	fmt.Println("TAG is the name of your notes collection.")
+}
+
+func readNotes(filename string) []string {
+	file, _ := os.Open(filename) // open file for reading
+	defer file.Close()           // close file when function ends
+
+	var notes []string
+	scanner := bufio.NewScanner(file)
+
+	// Read file line by line
+	for scanner.Scan() {
+		notes = append(notes, scanner.Text())
+	}
+	return notes
+}
+
+func writeNotes(filename string, notes []string) {
+	file, _ := os.Create(filename) // Create overwrites the file
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+
+	// Write each note as a new line
+	for _, note := range notes {
+		writer.WriteString(note + "\n")
+	}
+	writer.Flush() // make sure everything is actually written to file
+}
+
+func showNotes(filename string) {
+	notes := readNotes(filename)
+
+	fmt.Println("\nNotes:")
+	if len(notes) == 0 {
+		fmt.Println("No notes yet.")
+		return
+	}
+
+	// %03d means print number with 3 digits (001, 002...)
+	for i, note := range notes {
+		fmt.Printf("%03d - %s\n", i+1, note)
+	}
+}
+
+func addNote(filename string, reader *bufio.Reader) {
+	fmt.Println("\nEnter the note text:")
+	text, _ := reader.ReadString('\n')
+	text = strings.TrimSpace(text)
+
+	if text == "" {
+		fmt.Println("Empty note not added.")
+		return
+	}
+
+	// Open file in append mode (add to end of file)
+	file, _ := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
+	defer file.Close()
+
+	file.WriteString(text + "\n")
+}
+
+func deleteNote(filename string, reader *bufio.Reader) {
+	notes := readNotes(filename)
+
+	if len(notes) == 0 {
+		fmt.Println("No notes to delete.")
+		return
+	}
+
+	fmt.Println("\nEnter the number of note to remove or 0 to cancel:")
+	input, _ := reader.ReadString('\n')
+	input = strings.TrimSpace(input)
+
+	num, err := strconv.Atoi(input)
+	if err != nil || num < 0 || num > len(notes) {
+		fmt.Println("Invalid number.")
+		return
+	}
+
+	if num == 0 {
+		return
+	}
+
+	// Remove note from slice
+	notes = append(notes[:num-1], notes[num:]...)
+	writeNotes(filename, notes) // rewrite file without that note
+}
